@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar — StudyTrack</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Header / Navbar -->
+  <header class="navbar">
+    <a href="index.html" class="navbar-logo">
+      <span class="logo-icon">&#9998;</span>
+      <span class="logo-text">StudyTrack</span>
+    </a>
+    <nav class="navbar-links">
+      <a href="index.html">Dashboard</a>
+      <a href="assignments.html">Assignments</a>
+      <a href="calendar.html" class="nav-active">Calendar</a>
+    </nav>
+  </header>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">Calendar View</h1>
+        <p class="page-subtitle">A visual overview of all your upcoming due dates.</p>
+      </div>
+      <a href="assignments.html" class="btn-secondary">Manage Assignments</a>
+    </div>
+  </div>
+
+  <!-- Calendar -->
+  <main class="calendar-main">
+    <div class="calendar-container">
+      <div class="calendar-nav">
+        <button class="cal-nav-btn" id="prevMonth">&#8249;</button>
+        <h2 class="cal-month-label" id="monthLabel"></h2>
+        <button class="cal-nav-btn" id="nextMonth">&#8250;</button>
+      </div>
+      <div class="cal-weekdays">
+        <div>Sun</div>
+        <div>Mon</div>
+        <div>Tue</div>
+        <div>Wed</div>
+        <div>Thu</div>
+        <div>Fri</div>
+        <div>Sat</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+  </main>
+
+  <!-- Assignment Detail Panel -->
+  <div class="modal-overlay hidden" id="calDetailOverlay">
+    <div class="modal cal-detail-modal">
+
+      <!-- View Mode -->
+      <div id="calDetailView">
+        <div class="modal-header">
+          <h2 id="detailTitle"></h2>
+          <button class="modal-close" id="closeDetail">&times;</button>
+        </div>
+        <div class="cal-detail-meta">
+          <span class="row-course" id="detailCourse"></span>
+          <span class="cal-detail-date" id="detailDate"></span>
+        </div>
+        <div id="detailNotesRow" class="cal-detail-notes"></div>
+        <div class="cal-detail-footer">
+          <span id="detailBadge" class="uc-badge"></span>
+          <div class="row-actions">
+            <button class="btn-icon btn-complete" id="detailComplete" title="Mark complete">&#10003;</button>
+            <button class="btn-icon" id="detailEdit" title="Edit">&#9998;</button>
+            <button class="btn-icon" id="detailDelete" title="Delete">&#128465;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Mode -->
+      <div id="calEditView" class="hidden">
+        <div class="modal-header">
+          <h2>Edit Assignment</h2>
+          <button class="modal-close" id="closeEditView">&times;</button>
+        </div>
+        <form id="calEditForm">
+          <div class="inline-fields">
+            <div class="form-group fg-full">
+              <label for="editInputTitle">Assignment Title</label>
+              <input type="text" id="editInputTitle" required />
+            </div>
+            <div class="form-group">
+              <label for="editInputCourse">Course</label>
+              <input type="text" id="editInputCourse" required />
+            </div>
+            <div class="form-group">
+              <label for="editInputDue">Due Date</label>
+              <input type="date" id="editInputDue" required />
+            </div>
+            <div class="form-group fg-full">
+              <label for="editInputNotes">Notes <span class="optional">(optional)</span></label>
+              <textarea id="editInputNotes" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-ghost" id="cancelEditView">Cancel</button>
+            <button type="submit" class="btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="logo-text footer-logo">StudyTrack</span>
+    <p>&copy; 2026 StudyTrack. Built for students, by students.</p>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'studytrack_assignments';
+    const MONTHS = ['January','February','March','April','May','June',
+                    'July','August','September','October','November','December'];
+
+    function getAssignments() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+
+    function saveAssignments(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function getStatusBadge(dateStr, completed) {
+      if (completed) return { label: '&#10003; Complete', cls: 'done-badge' };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const due  = new Date(y, m - 1, d);
+      const diff = Math.ceil((due - today) / 86400000);
+      if (diff < 0)   return { label: 'Overdue',   cls: 'urgent-badge' };
+      if (diff === 0) return { label: 'Due Today', cls: 'urgent-badge' };
+      if (diff <= 3)  return { label: 'Due Soon',  cls: 'urgent-badge' };
+      if (diff <= 7)  return { label: 'This Week', cls: 'soon-badge'   };
+      return               { label: 'Upcoming',    cls: 'ok-badge'     };
+    }
+
+    function getChipClass(dueDate, completed) {
+      if (completed) return 'chip-done';
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [y, m, d] = dueDate.split('-').map(Number);
+      const due  = new Date(y, m - 1, d);
+      const diff = Math.ceil((due - today) / 86400000);
+      if (diff < 0)  return 'chip-overdue';
+      if (diff <= 3) return 'chip-urgent';
+      if (diff <= 7) return 'chip-soon';
+      return 'chip-ok';
+    }
+
+    let viewYear  = new Date().getFullYear();
+    let viewMonth = new Date().getMonth();
+    let selectedId = null;
+
+    // ── Calendar Rendering ───────────────────────────────────
+    function renderCalendar() {
+      const assignments = getAssignments();
+      document.getElementById('monthLabel').textContent = `${MONTHS[viewMonth]} ${viewYear}`;
+
+      const grid        = document.getElementById('calGrid');
+      grid.innerHTML    = '';
+
+      const firstDay    = new Date(viewYear, viewMonth, 1).getDay();
+      const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+      const today       = new Date();
+
+      // Map dateStr -> assignments[]
+      const assignMap = {};
+      assignments.forEach(a => {
+        if (!a || !a.dueDate) return;
+        if (!assignMap[a.dueDate]) assignMap[a.dueDate] = [];
+        assignMap[a.dueDate].push(a);
+      });
+
+      // Leading empty cells
+      for (let i = 0; i < firstDay; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'cal-day empty';
+        grid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-day';
+
+        const mm      = String(viewMonth + 1).padStart(2, '0');
+        const dd      = String(day).padStart(2, '0');
+        const dateStr = `${viewYear}-${mm}-${dd}`;
+
+        const isToday = today.getFullYear() === viewYear &&
+                        today.getMonth()    === viewMonth &&
+                        today.getDate()     === day;
+        if (isToday) cell.classList.add('today');
+
+        // Day number
+        const numEl = document.createElement('div');
+        numEl.className = 'cal-day-num' + (isToday ? ' today-num' : '');
+        numEl.textContent = day;
+        cell.appendChild(numEl);
+
+        // Assignment chips
+        const dayItems = assignMap[dateStr] || [];
+        const MAX_SHOWN = 3;
+
+        dayItems.slice(0, MAX_SHOWN).forEach(a => {
+          const chip = document.createElement('div');
+          chip.className = `cal-chip ${getChipClass(a.dueDate, a.completed)}`;
+
+          // Show course · title, truncation handled by CSS
+          chip.textContent = `${a.course} · ${a.title}`;
+          chip.title = `${a.course}: ${a.title}`;
+
+          chip.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDetail(a.id);
+          });
+
+          cell.appendChild(chip);
+        });
+
+        const extra = dayItems.length - MAX_SHOWN;
+        if (extra > 0) {
+          const more = document.createElement('div');
+          more.className   = 'cal-more';
+          more.textContent = `+${extra} more`;
+          cell.appendChild(more);
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // ── Detail Panel ─────────────────────────────────────────
+    function openDetail(id) {
+      selectedId = id;
+      refreshDetailView();
+      document.getElementById('calDetailView').classList.remove('hidden');
+      document.getElementById('calEditView').classList.add('hidden');
+      document.getElementById('calDetailOverlay').classList.remove('hidden');
+    }
+
+    function refreshDetailView() {
+      const a = getAssignments().find(x => x.id === selectedId);
+      if (!a) return;
+
+      const badge = getStatusBadge(a.dueDate, a.completed);
+
+      document.getElementById('detailTitle').textContent = a.title;
+      document.getElementById('detailCourse').textContent = a.course;
+      document.getElementById('detailDate').textContent = '&#128197; ' + formatDate(a.dueDate);
+      document.getElementById('detailDate').innerHTML = '&#128197; ' + formatDate(a.dueDate);
+
+      const notesRow = document.getElementById('detailNotesRow');
+      if (a.notes) {
+        notesRow.textContent = a.notes;
+        notesRow.style.display = '';
+      } else {
+        notesRow.style.display = 'none';
+      }
+
+      const badgeEl = document.getElementById('detailBadge');
+      badgeEl.innerHTML = badge.label;
+      badgeEl.className = 'uc-badge ' + badge.cls;
+
+      const completeBtn = document.getElementById('detailComplete');
+      if (a.completed) completeBtn.classList.add('completed');
+      else             completeBtn.classList.remove('completed');
+    }
+
+    function closeDetail() {
+      document.getElementById('calDetailOverlay').classList.add('hidden');
+      selectedId = null;
+    }
+
+    // Complete toggle
+    document.getElementById('detailComplete').addEventListener('click', () => {
+      const data = getAssignments();
+      const a = data.find(x => x.id === selectedId);
+      if (!a) return;
+      a.completed = !a.completed;
+      saveAssignments(data);
+      refreshDetailView();
+      renderCalendar();
+    });
+
+    // Delete
+    document.getElementById('detailDelete').addEventListener('click', () => {
+      if (!confirm('Delete this assignment?')) return;
+      saveAssignments(getAssignments().filter(x => x.id !== selectedId));
+      closeDetail();
+      renderCalendar();
+    });
+
+    // Open edit mode
+    document.getElementById('detailEdit').addEventListener('click', () => {
+      const a = getAssignments().find(x => x.id === selectedId);
+      if (!a) return;
+      document.getElementById('editInputTitle').value  = a.title;
+      document.getElementById('editInputCourse').value = a.course;
+      document.getElementById('editInputDue').value    = a.dueDate;
+      document.getElementById('editInputNotes').value  = a.notes || '';
+      document.getElementById('calDetailView').classList.add('hidden');
+      document.getElementById('calEditView').classList.remove('hidden');
+    });
+
+    // Cancel edit → back to view
+    document.getElementById('cancelEditView').addEventListener('click', () => {
+      document.getElementById('calEditView').classList.add('hidden');
+      document.getElementById('calDetailView').classList.remove('hidden');
+    });
+
+    document.getElementById('closeEditView').addEventListener('click', closeDetail);
+
+    // Save edit
+    document.getElementById('calEditForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const data = getAssignments();
+      const a = data.find(x => x.id === selectedId);
+      if (a) {
+        a.title   = document.getElementById('editInputTitle').value.trim();
+        a.course  = document.getElementById('editInputCourse').value.trim();
+        a.dueDate = document.getElementById('editInputDue').value;
+        a.notes   = document.getElementById('editInputNotes').value.trim();
+        saveAssignments(data);
+      }
+      closeDetail();
+      renderCalendar();
+    });
+
+    // Close overlay
+    document.getElementById('closeDetail').addEventListener('click', closeDetail);
+    document.getElementById('calDetailOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('calDetailOverlay')) closeDetail();
+    });
+
+    // Month navigation
+    document.getElementById('prevMonth').addEventListener('click', () => {
+      viewMonth--;
+      if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+      renderCalendar();
+    });
+
+    document.getElementById('nextMonth').addEventListener('click', () => {
+      viewMonth++;
+      if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+      renderCalendar();
+    });
+
+    // Re-render if assignments are updated in another tab
+    window.addEventListener('storage', (e) => {
+      if (e.key === STORAGE_KEY) renderCalendar();
+    });
+
+    renderCalendar();
+  </script>
+
+</body>
+</html>

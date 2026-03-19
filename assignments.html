@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assignments — StudyTrack</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Header / Navbar -->
+  <header class="navbar">
+    <a href="index.html" class="navbar-logo">
+      <span class="logo-icon">&#9998;</span>
+      <span class="logo-text">StudyTrack</span>
+    </a>
+    <nav class="navbar-links">
+      <a href="index.html">Dashboard</a>
+      <a href="assignments.html" class="nav-active">Assignments</a>
+      <a href="calendar.html">Calendar</a>
+    </nav>
+  </header>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header-inner">
+      <div>
+        <h1 class="page-title">My Assignments</h1>
+        <p class="page-subtitle">Track, manage, and complete your coursework.</p>
+      </div>
+      <button class="btn-primary" id="toggleFormBtn">+ Add Assignment</button>
+    </div>
+  </div>
+
+  <!-- Inline Add / Edit Form -->
+  <div class="inline-form-wrap hidden" id="inlineFormWrap">
+    <div class="inline-form-inner">
+      <div class="inline-form">
+        <div class="inline-form-header">
+          <h3 id="formTitle">Add Assignment</h3>
+          <button class="modal-close" id="closeForm">&times;</button>
+        </div>
+        <form id="assignmentForm">
+          <input type="hidden" id="editId" />
+          <div class="inline-fields">
+            <div class="form-group fg-full">
+              <label for="inputTitle">Assignment Title</label>
+              <input type="text" id="inputTitle" placeholder="e.g. Lab Report" required />
+            </div>
+            <div class="form-group">
+              <label for="inputCourse">Course</label>
+              <input type="text" id="inputCourse" placeholder="e.g. CS101" required />
+            </div>
+            <div class="form-group">
+              <label for="inputDue">Due Date</label>
+              <input type="date" id="inputDue" required />
+            </div>
+            <div class="form-group fg-full">
+              <label for="inputNotes">Notes <span class="optional">(optional)</span></label>
+              <textarea id="inputNotes" rows="2" placeholder="Any extra details..."></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-ghost" id="cancelForm">Cancel</button>
+            <button type="submit" class="btn-primary" id="submitBtn">Add Assignment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="controls-bar">
+    <div class="controls-inner">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All</button>
+        <button class="filter-tab" data-filter="active">Active</button>
+        <button class="filter-tab" data-filter="completed">Completed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignments Table -->
+  <main class="assignments-main">
+    <div class="assignments-inner">
+      <div class="assignments-table">
+        <!-- Column Headers -->
+        <div class="col-headers">
+          <div class="col-title-spacer"></div>
+          <div class="col-header sortable" data-col="course" id="hdrCourse">
+            Course <span class="sort-icon" id="iconCourse">↕</span>
+          </div>
+          <div class="col-header sortable" data-col="dueDate" id="hdrDueDate">
+            Due Date <span class="sort-icon" id="iconDueDate">↑</span>
+          </div>
+          <div class="col-header sortable" data-col="completed" id="hdrStatus">
+            Completion Status <span class="sort-icon" id="iconStatus">↕</span>
+          </div>
+          <div class="col-actions-spacer"></div>
+        </div>
+        <!-- Rows rendered here -->
+        <div id="assignmentsList"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span class="logo-text footer-logo">StudyTrack</span>
+    <p>&copy; 2026 StudyTrack. Built for students, by students.</p>
+  </footer>
+
+  <script>
+    const STORAGE_KEY = 'studytrack_assignments';
+
+    function getAssignments() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+
+    function saveAssignments(data) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function getStatusBadge(dateStr, completed) {
+      if (completed) return { label: '&#10003; Complete', cls: 'done-badge' };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const due  = new Date(y, m - 1, d);
+      const diff = Math.ceil((due - today) / 86400000);
+      if (diff < 0)   return { label: 'Overdue',   cls: 'urgent-badge' };
+      if (diff === 0) return { label: 'Due Today', cls: 'urgent-badge' };
+      if (diff <= 3)  return { label: 'Due Soon',  cls: 'urgent-badge' };
+      if (diff <= 7)  return { label: 'This Week', cls: 'soon-badge'   };
+      return               { label: 'Upcoming',    cls: 'ok-badge'     };
+    }
+
+    let currentFilter = 'all';
+    let sortCol = 'dueDate';
+    let sortDir = 'asc';
+    let editingId = null;
+
+    function applySortAndFilter(assignments) {
+      let result = [...assignments];
+
+      // Filter
+      if (currentFilter === 'active')    result = result.filter(a => !a.completed);
+      if (currentFilter === 'completed') result = result.filter(a =>  a.completed);
+
+      // Sort
+      if (sortCol === 'completed') {
+        // Completion Status: asc = incomplete first, desc = completed first
+        result.sort((a, b) => {
+          const cmp = (a.completed ? 1 : 0) - (b.completed ? 1 : 0);
+          if (cmp !== 0) return sortDir === 'asc' ? cmp : -cmp;
+          return a.dueDate.localeCompare(b.dueDate);
+        });
+      } else {
+        // For course/dueDate: always keep completed at the bottom
+        const incomplete = result.filter(a => !a.completed);
+        const completed  = result.filter(a =>  a.completed);
+        const cmp = (a, b) => {
+          let c = 0;
+          if (sortCol === 'course')  c = a.course.localeCompare(b.course);
+          if (sortCol === 'dueDate') c = a.dueDate.localeCompare(b.dueDate);
+          return sortDir === 'desc' ? -c : c;
+        };
+        result = [...incomplete.sort(cmp), ...completed.sort(cmp)];
+      }
+
+      return result;
+    }
+
+    function updateSortIcons() {
+      const map = {
+        course:    { icon: 'iconCourse',  hdr: 'hdrCourse'  },
+        dueDate:   { icon: 'iconDueDate', hdr: 'hdrDueDate' },
+        completed: { icon: 'iconStatus',  hdr: 'hdrStatus'  },
+      };
+      Object.entries(map).forEach(([col, { icon, hdr }]) => {
+        const iconEl = document.getElementById(icon);
+        const hdrEl  = document.getElementById(hdr);
+        if (col === sortCol) {
+          iconEl.textContent = sortDir === 'asc' ? '↑' : '↓';
+          hdrEl.classList.add('sort-active');
+        } else {
+          iconEl.textContent = '↕';
+          hdrEl.classList.remove('sort-active');
+        }
+      });
+    }
+
+    function render() {
+      const list   = document.getElementById('assignmentsList');
+      const sorted = applySortAndFilter(getAssignments());
+
+      if (sorted.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">&#128203;</div>
+            <h3>No assignments here</h3>
+            <p>Click <strong>+ Add Assignment</strong> to get started.</p>
+          </div>`;
+        updateSortIcons();
+        return;
+      }
+
+      list.innerHTML = sorted.map(a => {
+        const badge = getStatusBadge(a.dueDate, a.completed);
+        return `
+          <div class="assignment-row ${a.completed ? 'row-done' : ''}">
+            <div class="row-title-area">
+              <div class="row-title-stack">
+                <span class="row-title">${a.title}</span>
+                ${a.notes ? `<span class="row-notes">${a.notes}</span>` : ''}
+              </div>
+            </div>
+            <div class="row-course">${a.course}</div>
+            <div class="row-date">&#128197; ${formatDate(a.dueDate)}</div>
+            <div class="row-status"><span class="uc-badge ${badge.cls}">${badge.label}</span></div>
+            <div class="row-actions">
+              <button class="btn-icon btn-complete ${a.completed ? 'completed' : ''}" data-id="${a.id}" title="${a.completed ? 'Mark incomplete' : 'Mark complete'}">&#10003;</button>
+              <button class="btn-icon btn-edit"   data-id="${a.id}" title="Edit">&#9998;</button>
+              <button class="btn-icon btn-delete" data-id="${a.id}" title="Delete">&#128465;</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      list.querySelectorAll('.btn-complete').forEach(btn =>
+        btn.addEventListener('click', () => toggleComplete(btn.dataset.id)));
+      list.querySelectorAll('.btn-edit').forEach(btn =>
+        btn.addEventListener('click', () => openEdit(btn.dataset.id)));
+      list.querySelectorAll('.btn-delete').forEach(btn =>
+        btn.addEventListener('click', () => deleteAssignment(btn.dataset.id)));
+
+      updateSortIcons();
+    }
+
+    function toggleComplete(id) {
+      const data = getAssignments();
+      const a = data.find(x => x.id === id);
+      if (a) { a.completed = !a.completed; saveAssignments(data); render(); }
+    }
+
+    function deleteAssignment(id) {
+      if (!confirm('Delete this assignment?')) return;
+      saveAssignments(getAssignments().filter(x => x.id !== id));
+      render();
+    }
+
+    // ── Inline Form ──────────────────────────────────────────
+    function openForm(assignment = null) {
+      editingId = assignment ? assignment.id : null;
+      document.getElementById('formTitle').textContent = assignment ? 'Edit Assignment' : 'Add Assignment';
+      document.getElementById('submitBtn').textContent = assignment ? 'Save Changes'    : 'Add Assignment';
+      document.getElementById('inputTitle').value  = assignment ? assignment.title           : '';
+      document.getElementById('inputCourse').value = assignment ? assignment.course          : '';
+      document.getElementById('inputDue').value    = assignment ? assignment.dueDate         : '';
+      document.getElementById('inputNotes').value  = assignment ? (assignment.notes || '')   : '';
+      document.getElementById('inlineFormWrap').classList.remove('hidden');
+      document.getElementById('inputTitle').focus();
+    }
+
+    function closeForm() {
+      document.getElementById('inlineFormWrap').classList.add('hidden');
+      document.getElementById('assignmentForm').reset();
+      editingId = null;
+    }
+
+    function openEdit(id) {
+      const a = getAssignments().find(x => x.id === id);
+      if (a) openForm(a);
+    }
+
+    document.getElementById('toggleFormBtn').addEventListener('click', () => openForm());
+    document.getElementById('closeForm').addEventListener('click', closeForm);
+    document.getElementById('cancelForm').addEventListener('click', closeForm);
+
+    document.getElementById('assignmentForm').addEventListener('submit', e => {
+      e.preventDefault();
+      const title   = document.getElementById('inputTitle').value.trim();
+      const course  = document.getElementById('inputCourse').value.trim();
+      const dueDate = document.getElementById('inputDue').value;
+      const notes   = document.getElementById('inputNotes').value.trim();
+      const data    = getAssignments();
+      if (editingId) {
+        const a = data.find(x => x.id === editingId);
+        if (a) Object.assign(a, { title, course, dueDate, notes });
+      } else {
+        data.push({ id: Date.now().toString(), title, course, dueDate, notes, completed: false });
+      }
+      saveAssignments(data);
+      closeForm();
+      render();
+    });
+
+    // ── Filter Tabs ──────────────────────────────────────────
+    document.querySelectorAll('.filter-tab').forEach(tab =>
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentFilter = tab.dataset.filter;
+        render();
+      }));
+
+    // ── Column Sort ──────────────────────────────────────────
+    document.querySelectorAll('.col-header.sortable').forEach(hdr =>
+      hdr.addEventListener('click', () => {
+        const col = hdr.dataset.col;
+        if (sortCol === col) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortCol = col;
+          sortDir = 'asc';
+        }
+        render();
+      }));
+
+    render();
+  </script>
+
+</body>
+</html>
