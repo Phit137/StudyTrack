@@ -41,40 +41,7 @@
         </div>
         <a href="assignments.html" class="btn-secondary">View All</a>
       </div>
-      <div class="upcoming-grid">
-        <div class="upcoming-card urgent">
-          <div class="upcoming-card-top">
-            <span class="uc-course">CS101</span>
-            <span class="uc-badge urgent-badge">Due Soon</span>
-          </div>
-          <div class="uc-title">Lab Report</div>
-          <div class="uc-date">&#128197; Mar 11</div>
-        </div>
-        <div class="upcoming-card soon">
-          <div class="upcoming-card-top">
-            <span class="uc-course">MATH220</span>
-            <span class="uc-badge soon-badge">This Week</span>
-          </div>
-          <div class="uc-title">Problem Set 4</div>
-          <div class="uc-date">&#128197; Mar 13</div>
-        </div>
-        <div class="upcoming-card ok">
-          <div class="upcoming-card-top">
-            <span class="uc-course">ENG110</span>
-            <span class="uc-badge ok-badge">Upcoming</span>
-          </div>
-          <div class="uc-title">Essay Draft</div>
-          <div class="uc-date">&#128197; Mar 17</div>
-        </div>
-        <div class="upcoming-card done-card">
-          <div class="upcoming-card-top">
-            <span class="uc-course">BIO201</span>
-            <span class="uc-badge done-badge">&#10003; Complete</span>
-          </div>
-          <div class="uc-title">Reading Notes</div>
-          <div class="uc-date">Turned in</div>
-        </div>
-      </div>
+      <div class="upcoming-grid" id="upcomingGrid"></div>
     </div>
   </section>
 
@@ -111,5 +78,69 @@
     <p>&copy; 2026 StudyTrack. Built for students, by students.</p>
   </footer>
 
+  <script>
+    const STORAGE_KEY = 'studytrack_assignments';
+
+    function getAssignments() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    }
+
+    function getCardStyle(dueDate, completed) {
+      if (completed) {
+        return { card: 'done-card', badge: 'done-badge', label: '&#10003; Complete' };
+      }
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const [y, m, d] = dueDate.split('-').map(Number);
+      const due  = new Date(y, m - 1, d);
+      const diff = Math.ceil((due - today) / 86400000);
+      if (diff < 0)   return { card: 'urgent', badge: 'urgent-badge', label: 'Overdue'      };
+      if (diff === 0) return { card: 'urgent', badge: 'urgent-badge', label: 'Due Today'    };
+      if (diff === 1) return { card: 'urgent', badge: 'urgent-badge', label: 'Due Tomorrow' };
+      if (diff <= 7)  return { card: 'soon',   badge: 'soon-badge',   label: 'This Week'    };
+      return               { card: 'ok',     badge: 'ok-badge',     label: 'Upcoming'     };
+    }
+
+    function formatShortDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function renderUpcoming() {
+      const grid = document.getElementById('upcomingGrid');
+      const assignments = getAssignments();
+
+      if (assignments.length === 0) {
+        grid.innerHTML = `
+          <div class="upcoming-empty">
+            <p>No assignments yet. <a href="assignments.html">Add some to get started.</a></p>
+          </div>`;
+        return;
+      }
+
+      // Sort by due date ascending, take the 4 soonest
+      const top4 = [...assignments]
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+        .slice(0, 4);
+
+      grid.innerHTML = top4.map(a => {
+        const { card, badge, label } = getCardStyle(a.dueDate, a.completed);
+        const dateDisplay = a.completed
+          ? 'Turned in'
+          : '&#128197; ' + formatShortDate(a.dueDate);
+        return `
+          <div class="upcoming-card ${card}">
+            <div class="upcoming-card-top">
+              <span class="uc-course">${a.course}</span>
+              <span class="uc-badge ${badge}">${label}</span>
+            </div>
+            <div class="uc-title">${a.title}</div>
+            <div class="uc-date">${dateDisplay}</div>
+          </div>`;
+      }).join('');
+    }
+
+    renderUpcoming();
+  </script>
 </body>
 </html>
