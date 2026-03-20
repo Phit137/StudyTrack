@@ -14,11 +14,14 @@
       <span class="logo-icon">&#9998;</span>
       <span class="logo-text">StudyTrack</span>
     </a>
-    <nav class="navbar-links">
+    <nav class="navbar-links" id="navLinks">
       <a href="index.html" class="nav-active">Dashboard</a>
       <a href="assignments.html">Assignments</a>
       <a href="calendar.html">Calendar</a>
     </nav>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
   </header>
 
   <!-- Hero Section -->
@@ -343,6 +346,20 @@
 
     renderUpcoming();
     renderCourseTable();
+
+    // ── Hamburger Menu ───────────────────────────────────────
+    const hamburger = document.getElementById('hamburger');
+    const navLinks  = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('open');
+      navLinks.classList.toggle('open');
+    });
+    document.addEventListener('click', e => {
+      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+        hamburger.classList.remove('open');
+        navLinks.classList.remove('open');
+      }
+    });
   </script>
 </body>
 </html>

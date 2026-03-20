@@ -14,11 +14,14 @@
       <span class="logo-icon">&#9998;</span>
       <span class="logo-text">StudyTrack</span>
     </a>
-    <nav class="navbar-links">
+    <nav class="navbar-links" id="navLinks">
       <a href="index.html">Dashboard</a>
       <a href="assignments.html" class="nav-active">Assignments</a>
       <a href="calendar.html">Calendar</a>
     </nav>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
   </header>
 
   <!-- Page Header -->
@@ -103,6 +106,34 @@
       </div>
     </div>
   </main>
+
+  <!-- Mobile Assignment Modal (only shown on mobile) -->
+  <div class="modal-overlay hidden" id="mobileAssignOverlay">
+    <div class="modal cal-detail-modal">
+
+      <!-- View Mode -->
+      <div id="mobileViewMode">
+        <div class="modal-header">
+          <h2 id="mobileAssignTitle"></h2>
+          <button class="modal-close" id="closeMobileAssign">&times;</button>
+        </div>
+        <div class="mobile-assign-meta">
+          <span class="row-course" id="mobileAssignCourse"></span>
+          <span class="cal-detail-date" id="mobileAssignDate"></span>
+        </div>
+        <div id="mobileAssignNotes" class="cal-detail-notes"></div>
+        <div class="cal-detail-footer">
+          <span id="mobileAssignBadge" class="uc-badge"></span>
+          <div class="row-actions">
+            <button class="btn-icon btn-complete" id="mobileCompleteBtn" title="Mark complete">&#10003;</button>
+            <button class="btn-icon" id="mobileEditBtn" title="Edit">&#9998;</button>
+            <button class="btn-icon" id="mobileDeleteBtn" title="Delete">&#128465;</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="footer">
@@ -214,7 +245,7 @@
       list.innerHTML = sorted.map(a => {
         const badge = getStatusBadge(a.dueDate, a.completed);
         return `
-          <div class="assignment-row ${a.completed ? 'row-done' : ''}">
+          <div class="assignment-row ${a.completed ? 'row-done' : ''}" data-id="${a.id}">
             <div class="row-title-area">
               <div class="row-title-stack">
                 <span class="row-title">${a.title}</span>
@@ -238,6 +269,12 @@
         btn.addEventListener('click', () => openEdit(btn.dataset.id)));
       list.querySelectorAll('.btn-delete').forEach(btn =>
         btn.addEventListener('click', () => deleteAssignment(btn.dataset.id)));
+
+      // Mobile: clicking the row opens the mobile modal
+      if (window.matchMedia('(max-width: 768px)').matches) {
+        list.querySelectorAll('.assignment-row').forEach(row =>
+          row.addEventListener('click', () => openMobileModal(row.dataset.id)));
+      }
 
       updateSortIcons();
     }
@@ -323,6 +360,84 @@
       }));
 
     render();
+
+    // ── Mobile Assignment Modal ──────────────────────────────
+    let mobileViewId = null;
+
+    function openMobileModal(id) {
+      mobileViewId = id;
+      refreshMobileModal();
+      document.getElementById('mobileAssignOverlay').classList.remove('hidden');
+    }
+
+    function closeMobileModal() {
+      document.getElementById('mobileAssignOverlay').classList.add('hidden');
+      mobileViewId = null;
+    }
+
+    function refreshMobileModal() {
+      const a = getAssignments().find(x => x.id === mobileViewId);
+      if (!a) return;
+      const badge = getStatusBadge(a.dueDate, a.completed);
+
+      document.getElementById('mobileAssignTitle').textContent = a.title;
+      document.getElementById('mobileAssignCourse').textContent = a.course;
+      document.getElementById('mobileAssignDate').innerHTML = '&#128197; ' + formatDate(a.dueDate);
+
+      const notesEl = document.getElementById('mobileAssignNotes');
+      if (a.notes) { notesEl.textContent = a.notes; notesEl.style.display = ''; }
+      else         { notesEl.style.display = 'none'; }
+
+      const badgeEl = document.getElementById('mobileAssignBadge');
+      badgeEl.innerHTML = badge.label;
+      badgeEl.className = 'uc-badge ' + badge.cls;
+
+      const completeBtn = document.getElementById('mobileCompleteBtn');
+      if (a.completed) completeBtn.classList.add('completed');
+      else             completeBtn.classList.remove('completed');
+    }
+
+    document.getElementById('closeMobileAssign').addEventListener('click', closeMobileModal);
+    document.getElementById('mobileAssignOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('mobileAssignOverlay')) closeMobileModal();
+    });
+
+    document.getElementById('mobileCompleteBtn').addEventListener('click', () => {
+      const data = getAssignments();
+      const a = data.find(x => x.id === mobileViewId);
+      if (!a) return;
+      a.completed = !a.completed;
+      saveAssignments(data);
+      refreshMobileModal();
+      render();
+    });
+
+    document.getElementById('mobileEditBtn').addEventListener('click', () => {
+      const id = mobileViewId;
+      closeMobileModal();
+      openEdit(id);
+    });
+
+    document.getElementById('mobileDeleteBtn').addEventListener('click', () => {
+      if (!confirm('Delete this assignment?')) return;
+      saveAssignments(getAssignments().filter(x => x.id !== mobileViewId));
+      closeMobileModal();
+      render();
+    });
+
+    // ── Hamburger Menu ───────────────────────────────────────
+    const hamburger = document.getElementById('hamburger');
+    const navLinks  = document.getElementById('navLinks');
+    hamburger.addEventListener('click', () => {
+      hamburger.classList.toggle('open');
+      navLinks.classList.toggle('open');
+    });
+    document.addEventListener('click', e => {
+      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
+        hamburger.classList.remove('open');
+        navLinks.classList.remove('open');
+      }
+    });
   </script>
 
 </body>
