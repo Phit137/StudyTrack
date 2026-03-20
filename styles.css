@@ -416,10 +416,22 @@ body {
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid rgba(0, 200, 215, 0.06);
   flex-wrap: wrap;
+  width: 100%;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s;
 }
 
 .ct-assignment:last-child {
   border-bottom: none;
+}
+
+.ct-assignment:hover {
+  background: rgba(0, 200, 215, 0.07);
 }
 
 .ct-assignment.ct-done {
