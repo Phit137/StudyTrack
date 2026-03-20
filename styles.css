@@ -226,7 +226,9 @@ body {
   box-shadow: 0 6px 24px rgba(0, 200, 215, 0.15);
 }
 
-.upcoming-card.urgent  { border-left: 4px solid #ff5f6d; }
+.upcoming-card.urgent   { border-left: 4px solid #ff5f6d; }
+.upcoming-card.overdue  { border-left: 4px solid #c0152a; background: rgba(180, 15, 35, 0.12); }
+.upcoming-card.overdue .uc-title { color: #ff4d5e; }
 .upcoming-card.soon    { border-left: 4px solid #ffbe0b; }
 .upcoming-card.ok      { border-left: 4px solid var(--accent); }
 .upcoming-card.done-card { border-left: 4px solid #4a6080; opacity: 0.65; }
@@ -255,7 +257,8 @@ body {
   letter-spacing: 0.5px;
 }
 
-.urgent-badge { background: rgba(255, 95, 109, 0.18); color: #ff8a93; }
+.urgent-badge  { background: rgba(255, 95, 109, 0.18); color: #ff8a93; }
+.overdue-badge { background: rgba(180, 15, 35, 0.35);  color: #ff4d5e; font-weight: 800; }
 .soon-badge   { background: rgba(255, 190, 11, 0.18);  color: #ffd04a; }
 .ok-badge     { background: rgba(0, 200, 215, 0.18);   color: var(--accent-lt); }
 .done-badge   { background: rgba(74, 96, 128, 0.25);   color: #7a9ab8; }

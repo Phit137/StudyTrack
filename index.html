@@ -94,9 +94,9 @@
       const [y, m, d] = dueDate.split('-').map(Number);
       const due  = new Date(y, m - 1, d);
       const diff = Math.ceil((due - today) / 86400000);
-      if (diff < 0)   return { card: 'urgent', badge: 'urgent-badge', label: 'Overdue'      };
-      if (diff === 0) return { card: 'urgent', badge: 'urgent-badge', label: 'Due Today'    };
-      if (diff === 1) return { card: 'urgent', badge: 'urgent-badge', label: 'Due Tomorrow' };
+      if (diff < 0)   return { card: 'overdue', badge: 'overdue-badge', label: 'Overdue'      };
+      if (diff === 0) return { card: 'urgent',  badge: 'urgent-badge',  label: 'Due Today'    };
+      if (diff === 1) return { card: 'urgent',  badge: 'urgent-badge',  label: 'Due Tomorrow' };
       if (diff <= 7)  return { card: 'soon',   badge: 'soon-badge',   label: 'This Week'    };
       return               { card: 'ok',     badge: 'ok-badge',     label: 'Upcoming'     };
     }
