@@ -14,15 +14,74 @@
       <span class="logo-icon">&#9998;</span>
       <span class="logo-text">StudyTrack</span>
     </a>
-    <nav class="navbar-links" id="navLinks">
+    <nav class="navbar-links hidden" id="navLinks">
       <a href="index.html" class="nav-active">Dashboard</a>
       <a href="assignments.html">Assignments</a>
       <a href="calendar.html">Calendar</a>
     </nav>
-    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
-      <span></span><span></span><span></span>
-    </button>
+    <div class="navbar-right">
+      <span class="nav-user hidden" id="navUser"></span>
+      <button class="btn-logout hidden" id="logoutBtn">Log Out</button>
+      <button class="hamburger hidden" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
   </header>
+
+  <!-- Auth Section (shown when logged out) -->
+  <section class="auth-section" id="authSection">
+    <div class="auth-card">
+
+      <div class="auth-logo">
+        <span class="logo-icon">&#9998;</span>
+        <span class="logo-text">StudyTrack</span>
+      </div>
+      <p class="auth-tagline">Organize your coursework. Never miss a deadline.</p>
+
+      <!-- Tab switcher -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSignIn">Sign In</button>
+        <button class="auth-tab" id="tabSignUp">Sign Up</button>
+      </div>
+
+      <!-- Error message -->
+      <div class="auth-error hidden" id="authError"></div>
+
+      <!-- Sign In Form -->
+      <form class="auth-form" id="signInForm">
+        <div class="form-group">
+          <label for="signInEmail">Email</label>
+          <input type="email" id="signInEmail" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="signInPassword">Password</label>
+          <input type="password" id="signInPassword" placeholder="••••••••" required />
+        </div>
+        <button type="submit" class="btn-primary auth-submit" id="signInBtn">Sign In</button>
+      </form>
+
+      <!-- Sign Up Form -->
+      <form class="auth-form hidden" id="signUpForm">
+        <div class="form-group">
+          <label for="signUpEmail">Email</label>
+          <input type="email" id="signUpEmail" placeholder="you@example.com" required />
+        </div>
+        <div class="form-group">
+          <label for="signUpPassword">Password</label>
+          <input type="password" id="signUpPassword" placeholder="Min. 6 characters" required />
+        </div>
+        <div class="form-group">
+          <label for="signUpConfirm">Confirm Password</label>
+          <input type="password" id="signUpConfirm" placeholder="Repeat password" required />
+        </div>
+        <button type="submit" class="btn-primary auth-submit" id="signUpBtn">Create Account</button>
+      </form>
+
+    </div>
+  </section>
+
+  <!-- Dashboard (shown when logged in) -->
+  <div class="hidden" id="dashSection">
 
   <!-- Hero Section -->
   <section class="hero">
@@ -119,247 +178,14 @@
     </div>
   </div>
 
+  </div><!-- /dashSection -->
+
   <!-- Footer -->
   <footer class="footer">
     <span class="logo-text footer-logo">StudyTrack</span>
     <p>&copy; 2026 StudyTrack. Built for students, by students.</p>
   </footer>
 
-  <script>
-    const STORAGE_KEY = 'studytrack_assignments';
-    let dashEditingId = null;
-
-    function getAssignments() {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    }
-
-    function saveAssignments(data) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-
-    function getCardStyle(dueDate, completed) {
-      if (completed) return { card: 'done-card', badge: 'done-badge', label: '&#10003; Complete' };
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const [y, m, d] = dueDate.split('-').map(Number);
-      const diff = Math.ceil((new Date(y, m - 1, d) - today) / 86400000);
-      if (diff < 0)   return { card: 'overdue', badge: 'overdue-badge', label: 'Overdue'      };
-      if (diff === 0) return { card: 'urgent',  badge: 'urgent-badge',  label: 'Due Today'    };
-      if (diff === 1) return { card: 'urgent',  badge: 'urgent-badge',  label: 'Due Tomorrow' };
-      if (diff <= 7)  return { card: 'soon',    badge: 'soon-badge',    label: 'This Week'    };
-      return               { card: 'ok',      badge: 'ok-badge',      label: 'Upcoming'     };
-    }
-
-    function formatShortDate(dateStr) {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-
-    function formatLongDate(dateStr) {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    }
-
-    // ── Upcoming Section ─────────────────────────────────────
-    function renderUpcoming() {
-      const grid = document.getElementById('upcomingGrid');
-      const assignments = getAssignments();
-
-      if (assignments.length === 0) {
-        grid.innerHTML = `
-          <div class="upcoming-empty">
-            <p>No assignments yet. <a href="assignments.html">Add some to get started.</a></p>
-          </div>`;
-        return;
-      }
-
-      const top4 = [...assignments]
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-        .slice(0, 4);
-
-      grid.innerHTML = top4.map(a => {
-        const { card, badge, label } = getCardStyle(a.dueDate, a.completed);
-        const dateDisplay = a.completed ? 'Turned in' : '&#128197; ' + formatShortDate(a.dueDate);
-        return `
-          <div class="upcoming-card ${card}">
-            <div class="upcoming-card-top">
-              <span class="uc-course">${a.course}</span>
-              <span class="uc-badge ${badge}">${label}</span>
-            </div>
-            <div class="uc-title">${a.title}</div>
-            <div class="uc-date">${dateDisplay}</div>
-          </div>`;
-      }).join('');
-    }
-
-    // ── Course Table ─────────────────────────────────────────
-    function renderCourseTable() {
-      const container = document.getElementById('courseTable');
-      const assignments = getAssignments();
-
-      if (assignments.length === 0) {
-        container.innerHTML = `
-          <div class="ct-empty">
-            <p>No assignments yet. <a href="assignments.html">Add some to get started.</a></p>
-          </div>`;
-        return;
-      }
-
-      const groups = {};
-      assignments.forEach(a => {
-        if (!groups[a.course]) groups[a.course] = [];
-        groups[a.course].push(a);
-      });
-
-      Object.values(groups).forEach(list =>
-        list.sort((a, b) => a.dueDate.localeCompare(b.dueDate)));
-
-      container.innerHTML = Object.keys(groups).sort().map(course => {
-        const items = groups[course];
-        const rows = items.map(a => {
-          const { badge, label } = getCardStyle(a.dueDate, a.completed);
-          const isOverdue = label === 'Overdue';
-          return `
-            <button class="ct-assignment ${a.completed ? 'ct-done' : ''}" data-id="${a.id}">
-              <span class="ct-title ${isOverdue ? 'ct-overdue-text' : ''}">${a.title}</span>
-              <span class="ct-date">&#128197; ${formatShortDate(a.dueDate)}</span>
-              <span class="uc-badge ${badge}">${label}</span>
-            </button>`;
-        }).join('');
-
-        return `
-          <div class="ct-row">
-            <div class="ct-course-name">
-              <span>${course}</span>
-              <span class="ct-count">${items.length} assignment${items.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div class="ct-assignments">${rows}</div>
-          </div>`;
-      }).join('');
-
-      // Attach click handlers to each assignment button
-      container.querySelectorAll('.ct-assignment').forEach(btn =>
-        btn.addEventListener('click', () => openDashModal(btn.dataset.id)));
-    }
-
-    // ── Dashboard Modal ──────────────────────────────────────
-    function openDashModal(id) {
-      dashEditingId = id;
-      refreshDashView();
-      document.getElementById('dashViewMode').classList.remove('hidden');
-      document.getElementById('dashEditMode').classList.add('hidden');
-      document.getElementById('dashModalOverlay').classList.remove('hidden');
-    }
-
-    function closeDashModal() {
-      document.getElementById('dashModalOverlay').classList.add('hidden');
-      dashEditingId = null;
-    }
-
-    function refreshDashView() {
-      const a = getAssignments().find(x => x.id === dashEditingId);
-      if (!a) return;
-      const { badge, label } = getCardStyle(a.dueDate, a.completed);
-
-      document.getElementById('dashModalTitle').textContent = a.title;
-      document.getElementById('dashModalCourse').textContent = a.course;
-      document.getElementById('dashModalDate').innerHTML = '&#128197; ' + formatLongDate(a.dueDate);
-
-      const notesEl = document.getElementById('dashModalNotes');
-      if (a.notes) { notesEl.textContent = a.notes; notesEl.style.display = ''; }
-      else         { notesEl.style.display = 'none'; }
-
-      const badgeEl = document.getElementById('dashModalBadge');
-      badgeEl.innerHTML  = label;
-      badgeEl.className  = 'uc-badge ' + badge;
-
-      const completeBtn = document.getElementById('dashCompleteBtn');
-      if (a.completed) completeBtn.classList.add('completed');
-      else             completeBtn.classList.remove('completed');
-    }
-
-    // Complete toggle
-    document.getElementById('dashCompleteBtn').addEventListener('click', () => {
-      const data = getAssignments();
-      const a = data.find(x => x.id === dashEditingId);
-      if (!a) return;
-      a.completed = !a.completed;
-      saveAssignments(data);
-      refreshDashView();
-      renderUpcoming();
-      renderCourseTable();
-    });
-
-    // Delete
-    document.getElementById('dashDeleteBtn').addEventListener('click', () => {
-      if (!confirm('Delete this assignment?')) return;
-      saveAssignments(getAssignments().filter(x => x.id !== dashEditingId));
-      closeDashModal();
-      renderUpcoming();
-      renderCourseTable();
-    });
-
-    // Open edit mode
-    document.getElementById('dashEditBtn').addEventListener('click', () => {
-      const a = getAssignments().find(x => x.id === dashEditingId);
-      if (!a) return;
-      document.getElementById('dashInputTitle').value  = a.title;
-      document.getElementById('dashInputCourse').value = a.course;
-      document.getElementById('dashInputDue').value    = a.dueDate;
-      document.getElementById('dashInputNotes').value  = a.notes || '';
-      document.getElementById('dashViewMode').classList.add('hidden');
-      document.getElementById('dashEditMode').classList.remove('hidden');
-    });
-
-    // Save edit
-    document.getElementById('dashEditForm').addEventListener('submit', e => {
-      e.preventDefault();
-      const data = getAssignments();
-      const a = data.find(x => x.id === dashEditingId);
-      if (a) {
-        a.title   = document.getElementById('dashInputTitle').value.trim();
-        a.course  = document.getElementById('dashInputCourse').value.trim();
-        a.dueDate = document.getElementById('dashInputDue').value;
-        a.notes   = document.getElementById('dashInputNotes').value.trim();
-        saveAssignments(data);
-      }
-      renderUpcoming();
-      renderCourseTable();
-      // Return to view mode with updated data
-      document.getElementById('dashEditMode').classList.add('hidden');
-      document.getElementById('dashViewMode').classList.remove('hidden');
-      refreshDashView();
-    });
-
-    // Cancel edit → back to view
-    document.getElementById('cancelDashEdit').addEventListener('click', () => {
-      document.getElementById('dashEditMode').classList.add('hidden');
-      document.getElementById('dashViewMode').classList.remove('hidden');
-    });
-
-    // Close buttons
-    document.getElementById('closeDashModal').addEventListener('click', closeDashModal);
-    document.getElementById('closeDashEdit').addEventListener('click', closeDashModal);
-    document.getElementById('dashModalOverlay').addEventListener('click', e => {
-      if (e.target === document.getElementById('dashModalOverlay')) closeDashModal();
-    });
-
-    renderUpcoming();
-    renderCourseTable();
-
-    // ── Hamburger Menu ───────────────────────────────────────
-    const hamburger = document.getElementById('hamburger');
-    const navLinks  = document.getElementById('navLinks');
-    hamburger.addEventListener('click', () => {
-      hamburger.classList.toggle('open');
-      navLinks.classList.toggle('open');
-    });
-    document.addEventListener('click', e => {
-      if (!hamburger.contains(e.target) && !navLinks.contains(e.target)) {
-        hamburger.classList.remove('open');
-        navLinks.classList.remove('open');
-      }
-    });
-  </script>
+  <script type="module" src="index.js"></script>
 </body>
 </html>

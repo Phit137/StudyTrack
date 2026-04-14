@@ -7,19 +7,19 @@ Planned Features
 
 The application will include the following core features:
 
-Assignment Management
+1 Assignment Management
 Users can add, edit, and delete assignments with details such as title, course name, and due date.
 
-Completion Tracking
+2 Completion Tracking
 Assignments can be toggled between completed and incomplete states to track progress.
 
-Filtering Assignments
+3 Filtering Assignments
 Users can filter the assignment list to view all assignments, completed assignments, or incomplete assignments.
 
-Course Grouping
+4 Course Grouping
 Assignments can be organized and grouped by course for easier navigation.
 
-Calendar View
+5 Calendar View
 Users can view their assignments on a calendar to get a visual overview of upcoming due dates.
 
 Data Persistence
