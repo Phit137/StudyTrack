@@ -110,6 +110,12 @@ async function renderCalendar() {
     const numEl = document.createElement('div');
     numEl.className = 'cal-day-num' + (isToday ? ' today-num' : '');
     numEl.textContent = day;
+    if (dayItems.length > 1) {
+      const countBadge = document.createElement('span');
+      countBadge.className = 'cal-day-count';
+      countBadge.textContent = dayItems.length;
+      numEl.appendChild(countBadge);
+    }
     cell.appendChild(numEl);
 
     const MAX_SHOWN = 3;

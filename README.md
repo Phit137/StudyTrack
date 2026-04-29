@@ -1,43 +1,79 @@
-StudyTrack
-StudyTrack is a simple web application designed to help students organize and manage their assignments. The app allows users to create, edit, and track assignments with due dates and course information. Assignments can be marked as completed or deleted when they are no longer needed.
+# StudyTrack
 
-All assignment data is stored in the browser using localStorage so that tasks remain saved even after refreshing the page. The goal of this project is to provide a lightweight and responsive study planner that works on both desktop and mobile devices.
+A lightweight web app that helps students organize assignments, track due dates, and never miss a deadline.
 
-Planned Features
+---
 
-The application will include the following core features:
+## Features
 
-1 Assignment Management
-Users can add, edit, and delete assignments with details such as title, course name, and due date.
+### Assignment Management
+Add, edit, and delete assignments with a title, course name, due date, and optional notes. All changes sync instantly to the cloud.
 
-2 Completion Tracking
-Assignments can be toggled between completed and incomplete states to track progress.
+### Completion Tracking
+Mark assignments complete or incomplete with one click. Completed assignments are visually separated from active ones and can be filtered out of the list.
 
-3 Filtering Assignments
-Users can filter the assignment list to view all assignments, completed assignments, or incomplete assignments.
+### Filtering & Sorting
+Filter the assignment list by **All**, **Active**, or **Completed**. Sort by course name, due date, or completion status in ascending or descending order.
 
-4 Course Grouping
-Assignments can be organized and grouped by course for easier navigation.
+### Dashboard
+The home page shows your next four upcoming assignments at a glance, plus all assignments grouped by course. Click any assignment to view details, edit, or delete it.
 
-5 Calendar View
-Users can view their assignments on a calendar to get a visual overview of upcoming due dates.
+### Calendar View
+A monthly calendar highlights every day that has an assignment due. Click a day to see a full list of assignments for that date, with options to complete, edit, or delete each one.
 
-Data Persistence
+### Status Badges
+Assignments are automatically color-coded based on urgency:
+- **Overdue** — past the due date
+- **Due Today / Due Tomorrow** — immediate attention needed
+- **This Week** — due within 7 days
+- **Upcoming** — more than a week away
+- **Complete** — finished
 
-Assignment data will be stored using localStorage in the browser. Data will be saved as a structured JSON array so that assignments remain available even after refreshing the page.
+### Authentication
+Sign up and log in with email and password. Each user's assignments are private and stored under their own account. Protected pages redirect to the login screen if you are not signed in.
 
-Tech Stack
+### Mobile Responsive
+The layout adapts to smaller screens with a hamburger navigation menu and a tap-to-open detail modal for assignments.
 
-This project will be built using the following technologies:
+---
 
-HTML5 for structure
+## Tech Stack
 
-CSS3 for styling and responsive design
+| Layer | Technology |
+|---|---|
+| Structure | HTML5 |
+| Styling | CSS3 |
+| Logic | Vanilla JavaScript (ES Modules) |
+| Authentication | Firebase Authentication |
+| Database | Cloud Firestore |
+| Version Control | Git & GitHub |
 
-JavaScript (Vanilla JS) for application logic
+---
 
-localStorage for persistent data storage
+## Project Structure
 
-Git & GitHub for version control
+```
+midterm/
+├── index.html        # Dashboard (login/signup + upcoming assignments)
+├── index.js          # Dashboard logic
+├── assignments.html  # Full assignment list
+├── assignments.js    # Assignment list logic
+├── calendar.html     # Monthly calendar view
+├── calendar.js       # Calendar logic
+├── script.js         # Shared Firebase module (auth + Firestore helpers)
+└── styles.css        # All styles
+```
 
-GitHub Pages / Netlify / Vercel for deployment
+---
+
+## Data Model
+
+Each assignment is stored in Firestore at `users/{uid}/assignments/{assignmentId}` with the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `title` | string | Assignment name |
+| `course` | string | Course or class name |
+| `dueDate` | string | Due date in `YYYY-MM-DD` format |
+| `notes` | string | Optional extra details |
+| `completed` | boolean | Whether the assignment is done |

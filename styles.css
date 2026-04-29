@@ -1283,6 +1283,19 @@ body::before {
   font-weight: 600;
   color: var(--text-muted);
   margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cal-day-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: var(--accent);
+  color: #000;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+  line-height: 1.6;
 }
 
 .cal-day-num.today-num {
